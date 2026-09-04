@@ -21,7 +21,7 @@ RCON Tool Companion provides player-level fun commands that CS2's native RCON co
 3. Restart the server or load the plugin through CounterStrikeSharp.
 4. Run `css_rct_status` through RCON. A successful response starts with `[RconToolCompanion] Ready.`
 
-The short `RCT` plugin directory is intentional. On affected Linux container filesystems, the .NET host cannot canonicalize a longer plugin path even though CounterStrikeSharp can discover it. The DLL retains the full product name for clarity.
+The short `RCT` plugin directory is intentional. On affected Linux container filesystems, the .NET host cannot canonicalize a longer plugin path even though CounterStrikeSharp can discover it.
 
 No configuration file or admin plugin is required.
 
