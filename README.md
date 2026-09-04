@@ -17,7 +17,7 @@ RCON Tool Companion provides player-level fun commands that CS2's native RCON co
 
 1. Extract the release ZIP into the CS2 server root.
 2. Confirm this file exists:
-	`game/csgo/addons/counterstrikesharp/plugins/RCT/RconToolCompanion.dll`
+	`game/csgo/addons/counterstrikesharp/plugins/RCT/RCT.dll`
 3. Restart the server or load the plugin through CounterStrikeSharp.
 4. Run `css_rct_status` through RCON. A successful response starts with `[RconToolCompanion] Ready.`
 
