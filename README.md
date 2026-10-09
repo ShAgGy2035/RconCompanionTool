@@ -6,7 +6,7 @@ RCON Tool Companion (RCT) is a standalone CounterStrikeSharp plugin for CS2 Fun 
 
 The [Ultimate CS2 RCON/Server Tool](https://github.com/ShAgGy2035/Ultimate-RCON-Server-Tool) is optional. Use RCT alone with `!fun`, or use the desktop tool for mode settings, scheduled rotations, RCON commands, and server management.
 
-See the [1.0.2 release notes](https://github.com/ShAgGy2035/RconCompanionTool/releases/tag/v1.0.2) for release history.
+See the [1.0.2 release notes](https://github.com/ShAgGy2035/RconCompanionTool/releases) for release history.
 
 ## Contents
 
