@@ -1,186 +1,327 @@
 # RCON Tool Companion
 
-Standalone CounterStrikeSharp plugin with optional integration into [ShAgGy's Ultimate CS2 RCON/Server Tool](https://github.com/ShAgGy2035/Ultimate-RCON-Server-Tool).
+**Version:** 1.0.2 | **Author:** ShAgGy
 
-Version: 1.0.2  
-Author: ShAgGy
+RCON Tool Companion (RCT) is a standalone CounterStrikeSharp plugin for CS2 Fun Stuff modes and player-level commands. It includes its own in-game administration menu and does not depend on SimpleAdmin or a separate menu plugin.
 
-Release history: [v1.0.2 release notes](Release%20Notes-1.0.2.md).
+The [Ultimate CS2 RCON/Server Tool](https://github.com/ShAgGy2035/Ultimate-RCON-Server-Tool) is optional. Use RCT alone with `!fun`, or use the desktop tool for mode settings, scheduled rotations, RCON commands, and server management.
 
-RCON Tool Companion provides player-level fun commands that CS2's native RCON console cannot perform reliably. It is independent of SimpleAdmin. Administrative console commands are restricted to the server console or RCON; the in-game `!fun` / `/fun` menu requires the `@css/fun` permission.
+See the [1.0.2 release notes](Release%20Notes-1.0.2.md) for release history.
 
-The desktop RCON/Server Tool is **optional**: trusted administrators can use `!fun` to select modes, adjust available bot settings, and roll back modes without installing or running the desktop app. Companion runs on the CS2 server and uses its own `RCT.json` configuration. The [desktop tool](https://github.com/ShAgGy2035/Ultimate-RCON-Server-Tool) adds a convenient UI for server/RCON management, exposed mode settings, plugin maintenance, and scheduling; it is not a prerequisite for in-game Fun Stuff.
+## Contents
+
+- [Requirements](#requirements)
+- [Install and verify](#install-and-verify)
+- [Start a mode](#start-a-mode)
+- [Available modes](#available-modes)
+- [Super Hero: all fourteen powers](#super-hero-all-fourteen-powers)
+- [One in the Chamber](#one-in-the-chamber)
+- [Bot settings](#bot-settings)
+- [Configuration and upgrades](#configuration-and-upgrades)
+- [Rollback and map changes](#rollback-and-map-changes)
+- [Command reference](#command-reference)
+- [Player targets and examples](#player-targets-and-examples)
+- [Managed player state](#managed-player-state)
+- [Troubleshooting and validation](#troubleshooting-and-validation)
 
 ## Requirements
 
-- A Counter-Strike 2 dedicated server
-- Metamod:Source
-- Full CounterStrikeSharp 1.0.376 runtime (or a compatible newer runtime). The expanded powers use its native pre-damage listeners and hull traces; an older native runtime is not supported simply by replacing its API DLL.
-- No menu plugin is required; `!fun` uses Companion's built-in WASD menu
+- A Counter-Strike 2 dedicated server.
+- Metamod:Source.
+- The **full CounterStrikeSharp 1.0.376 runtime**, or a compatible newer runtime. Expanded Super Hero powers use native pre-damage listeners and hull traces; replacing an older runtime's API DLL alone is not sufficient.
 
-## Installation
+RCT targets .NET 10 and CounterStrikeSharp API 1.0.376. MenuManagerAPI, MenuManager, and PlayerSettingsCS2 are not required; they may remain installed for other plugins.
 
-1. Extract the release ZIP into the CS2 server's `game/csgo/` directory. The archive starts at `addons/`, not `game/csgo/`.
-2. Confirm this file exists:
-	`game/csgo/addons/counterstrikesharp/plugins/RCT/RCT.dll`
-3. Restart the server or load the plugin through CounterStrikeSharp.
-4. Run `css_rct_status` through RCON. A successful response starts with `[RconToolCompanion] Ready.`
+## Install and verify
 
-This release targets .NET 10 and CounterStrikeSharp API 1.0.376. The project builds successfully against that API. If `css_plugins list` shows `Unknown (Unknown)`, remove the older RCT DLL, install this complete release, and restart the server instead of hot-reloading across the framework change.
+1. Extract `RconToolCompanion-v1.0.2.zip` into the server's `game/csgo/` directory. The archive starts at `addons/`.
+2. Confirm the deployed plugin is at:
 
-`!fun` uses a built-in center-screen WASD menu: **W/S** move, **E** selects, **A** returns to the previous menu, and **R** exits. The player is held in place while the menu is open. Companion 1.0.2 no longer depends on MenuManagerAPI, MenuManager, or PlayerSettingsCS2; they can stay installed for other plugins but are not used by RCT.
+   ```text
+   game/csgo/addons/counterstrikesharp/plugins/RCT/RCT.dll
+   ```
 
-The short `RCT` plugin directory is intentional. On affected Linux container filesystems, the .NET host cannot canonicalize a longer plugin path even though CounterStrikeSharp can discover it. The DLL retains the full product name for clarity.
+3. Restart the server or load RCT through CounterStrikeSharp.
+4. Run `css_rct_status` from the server console or RCON. A successful response starts with `[RconToolCompanion] Ready.` and reports the version and capabilities.
+5. Grant trusted in-game administrators the CounterStrikeSharp permission `@css/fun`.
 
-On first load, CounterStrikeSharp generates the standalone mode configuration at:
+The short `RCT` directory is intentional: affected Linux container filesystems can fail to canonicalize a longer plugin path. Keep the deployed directory and DLL named `RCT` and `RCT.dll`.
 
-`game/csgo/addons/counterstrikesharp/configs/plugins/RCT/RCT.json`
+## Start a mode
 
-In-game and RCON settings saves explicitly target this deployed `RCT/RCT.json` path. Earlier builds used a CounterStrikeSharp helper that derived `RconToolCompanion/RconToolCompanion.json` from the assembly name instead; changing permissions on `RCT.json` could not fix a failure writing that different path. The corrected build uses the same RCT path for bot settings, bot-team restore state, and empty-server policy. It does not migrate or overwrite files under the long-name path. Restore ordinary permissions after testing; real filesystem write restrictions still apply, and save errors now report the intended RCT path. Local file creation/update/roundtrip checks passed, and the user has confirmed hosted settings Apply and JSON saving now work.
+### In game
 
-Its mode sections mirror Universal's Fun Stuff options. ScoutzKnives exposes air acceleration, gravity, bunnyhopping, automatic bunnyhopping, fall-damage scale, and friction. Surf exposes cheats, acceleration, air acceleration, gravity, both bunnyhop switches, jump and landing stamina costs, round time, and freeze time. Grenade Wars, Fire Grenade Wars, and Zeus Wars always enforce their required managed loadouts and no longer expose a `ManagedLoadout` setting. Every mode also has `BotsEnabled`, `BotQuota`, and `BotQuotaMode`. `BotsEnabled` defaults to `true`; `BotQuota` defaults to `null`, which preserves the server's current quota. Set `BotQuota` from 1 to 64 to enforce an exact count for that mode. `BotQuotaMode` accepts `normal`, `fill`, or `match` and defaults to `normal`; `fill` replaces bots as human players join to maintain the configured total quota. When bots are disabled, RCT ignores the quota and quota mode, sets `bot_quota 0`, and kicks current bots. Rollback or a mode switch restores every changed cvar, including bot and physics values, to its captured pre-mode value. Edit the JSON while the plugin is unloaded, then load or restart RCT. Invalid values are clamped to supported ranges.
+Type `!fun` or `/fun` in chat with the `@css/fun` permission.
 
-Administrators with `@css/fun` can also change each mode's `BotsEnabled`, `BotQuota` (current or a preset from 1 to 20), and `BotQuotaMode` in game. Selecting any mode except No Bots in `!fun` opens that mode's submenu with **Start** (showing the bot settings it will use) followed by the bot settings. **A** returns to the previous menu. Changes are saved to `RCT.json` and are used when the mode is started.
+| Key | Action |
+| --- | --- |
+| W / S | Move through options |
+| E | Select |
+| A | Return to the previous menu |
+| R | Exit |
 
-The standalone `!fun` **Bot control** panel is staged: changing bot enablement, quota, quota mode, or team only edits the open draft. Choose **Apply now** to save the preferences to `RCT.json` and apply them to the live server. If saving fails, no server changes are applied. Enabling bots with a zero current quota starts with a quota of 10 unless another quota is selected.
+The menu holds the player in place while open. Select a gameplay mode, review its bot options, and choose **Start**. Bot edits in a mode submenu are saved to `RCT.json` and used when that mode starts. **No Bots** starts directly; the separate **Bot control** panel uses **Apply now**.
 
-`RollbackWhenServerEmpty` (default `true`) rolls back the active Fun Stuff mode, whether applied by Universal or `!fun`, only after the server stays empty for `EmptyServerRollbackDelaySeconds` (default `300`, five minutes). Humans returning, including connecting/reconnecting players, cancel the pending rollback. Bots and SourceTV do not count. The deadline is retained across maps and repeated empty checks do not extend it. At expiry, Companion rechecks the roster and map-transition state before rolling back. Explicit **Rollback** is still immediate and cancels pending grace timers; mode replacement and plugin unload also cancel them. Set `RollbackWhenServerEmpty` to `false` to keep modes indefinitely on an empty server. The delay accepts `0`-`3600` seconds; `0` removes the grace period. `css_rct_status` shows **Empty-server grace** with remaining time, and the updated build advertises `empty-server-grace`. Builds and focused deadline/cancellation checks passed; live transition behavior still needs testing.
+Choose **Rollback** to end the active mode and restore captured server settings. In-game administrators do not need an RCON password or the desktop app.
 
-**Super Hero** (`css_rct_mode_enable superhero`, also in `!fun`) keeps normal weapons and buying and assigns one of fourteen enabled powers on each spawn. The original powers are Speedster (`SpeedMultiplier`, default 1.6x), Moon Jumper (`LowGravityScale`, default 0.4), Tank (`TankHealth`, default 250, plus full armor), Ghost (`GhostVisibilityPercent`, default 15), Vampire (heals `VampirePercent`, default 50%, of damage dealt), and Regenerator (heals `KillHealAmount`, default 50, per enemy kill). Vampire and Regenerator healing stops at `MaxHealth` (default 200). Universal exposes all fourteen toggles and their strengths directly in its Super Hero panel; `!fun` uses the `SuperHero` section of `RCT.json`. Rollback removes all powers.
+### Server console or RCON
 
-Super Hero also shows a non-interactive center-screen notice with the assigned power name and the same description as chat. `SuperHero.PowerNoticeSeconds` defaults to `5`; set it from `0` to `30`, with `0` disabling player and spectator popups. Universal exposes **Power popup (seconds)**. Chat remains available as a fallback. Spectators see the power of the living player or bot they are watching, including the subject's name and a bot label; switching targets or a new power/life starts a fresh notice. A viewer's `!fun` menu takes priority and pauses an existing notice's clock. Popups do not freeze movement or accept menu input, and are cleared on expiration, mode exit, or map reset. Focused clock, target-identity, and safe HTML checks passed; actual in-game spectator/HUD presentation still needs testing. Updated Companion reports `superhero-notice` capability.
+Use `css_rct_fun_apply <mode>` to start a complete mode using its `RCT.json` defaults:
 
-Power notices maintain cached HTML on each server tick, matching the existing `!fun` menu's display cadence, rather than relying on one HUD event to remain visible. Target resolution and HTML generation are still cached/throttled; the configured server-side clock controls expiry and menu pause/resume. The single-event revision was reported to disappear after about one second, so its native duration was not sufficient on the tested client. Spectator switching has been reported working; the new per-tick presentation still needs a live duration/pulsing/readability retest.
+```text
+css_rct_fun_apply superhero
+css_rct_status
+css_rct_mode_rollback
+```
 
-The eight additional powers default to enabled. Their boolean JSON keys match the power names without spaces:
+Administrative console commands are server/RCON-only. The lower-level `css_rct_mode_enable` selects a profile; it is not a substitute for the complete configuration sequence. For ordinary starts and scheduled rotations, use `css_rct_fun_apply`.
 
-| Power / Key | Effect | Strength Keys And Defaults |
+### Optional desktop integration
+
+Universal exposes the Fun Stuff settings, including all fourteen Super Hero toggles and strengths. Universal and `!fun` can replace or roll back modes started by either interface. RCT owns their shared rollback snapshot; each gameplay mode retains independent rules and handlers.
+
+## Available modes
+
+Use the token below with `css_rct_fun_apply`. In `!fun`, No Bots and Bot control appear first, gameplay modes follow alphabetically, and Rollback is last.
+
+| Mode | Token | Overview |
 | --- | --- | --- |
-| `Juggernaut` | Less incoming damage, slower movement | `JuggernautDamageReductionPercent`: 35; `JuggernautSpeedMultiplier`: 0.75 |
-| `SecondWind` | Cancels one lethal incoming hit per life and restores survival health | `SecondWindHealth`: 35 |
-| `AmmoRecycler` | Enemy kills refill the active magazine | No numeric setting |
-| `Berserker` | Increased damage and speed while below the health threshold | `BerserkerHealthThreshold`: 35; `BerserkerDamageMultiplier`: 1.5; `BerserkerSpeedMultiplier`: 1.3 |
-| `Medic` | Heals nearby living teammates with line of sight, capped at 100 health | `MedicHealAmount`: 5; `MedicRadius`: 300 units; `MedicIntervalSeconds`: 2 |
-| `Blink` | Use key (normally E) attempts a forward teleport; blocked paths, occupied destinations, and unsupported drops are rejected | `BlinkDistance`: 250 units; `BlinkCooldownSeconds`: 8 |
-| `DoubleJump` | Release Jump and press again in the air for one extra jump, reset on landing | `DoubleJumpVelocity`: 250 |
-| `Gunslinger` | Shortened reload completion, transferring existing reserve ammo rather than creating ammo | `GunslingerReloadMultiplier`: 0.5 (half the normal remaining reload time) |
+| No Bots | `nobots` | Sets bot quota to zero and removes bots without changing weapons, buying, or ground cleanup. |
+| AWP / Sniper Wars | `awp` | Managed AWP-only loadouts; configurable forced loadout and infinite ammo. |
+| Bhop | `bhop` | Bunnyhopping and optional stamina-limit removal, with unrestricted weapons. |
+| Deathmatch | `deathmatch` | Configurable respawns, random spawns, duration, ammo, bot AI, and kill-streak medikit rewards. |
+| Grenade Wars | `grenades` | Managed HE grenades with replenishment after throws. |
+| Headshot Only | `headshot` | Headshot rules with unrestricted weapons. |
+| Knife Arena | `knife` | Managed team-knife loadouts. |
+| Molotov / Incendiary Wars | `fire-grenades` | Managed team-appropriate fire grenades with replenishment. |
+| One in the Chamber | `oneinthechamber` | Native free-for-all with a Deagle, knife, and one starting bullet. |
+| Pistols Only | `pistols` | Managed team-default pistol loadouts, with optional headshots-only rules. |
+| ScoutzKnives | `scoutzknives` | SSG 08 and team knife, with configurable movement and physics. |
+| Super Hero | `superhero` | One of fourteen enabled powers per life; normal weapons and buying. |
+| Surf | `surf` | Configurable surf physics, stamina, round time, and freeze time. |
+| Zeus Wars | `zeus` | Managed Zeus-only loadouts. |
 
-Bots trigger Blink automatically when an enemy is ahead and automatically use Double Jump while descending. Blink is suppressed while the Fun Stuff menu is open; selecting a menu option does not activate it. Reload completion is cancelled when the weapon, life, power, or map changes. Compile and focused logic checks passed; live damage, tracing, jump, healing, and reload animation behavior still needs server testing. Universal requires the `superhero-expanded` capability for this panel.
+**Bot Control** is a separate panel, not a replacement gameplay mode. It can adjust bots while another mode remains active.
 
-**One in the Chamber** (`oneinthechamber` token) is an isolated native FFA mode with Companion-controlled respawning in Universal, `!fun`, and scheduled rotations. Each spawn grants the stock Desert Eagle, team knife, exactly one bullet, and no reserve ammo. Each non-self player kill, including knife kills and kills of players on the same nominal team, earns one bullet. Missing your shot leaves the knife as the way to earn another; earned bullets can accumulate up to 64 total. Buying, other weapons, map-placed weapons, and C4 objectives are disabled. A per-life ammo ledger prevents reloads, pickups, or bot takeovers from creating extra bullets.
+## Super Hero: all fourteen powers
 
-The `OneInTheChamber` section in `RCT.json` supports `HeadshotsOnly` (default `false`), `RespawnDelaySeconds` (default `1`, range `0.25`-`10`), and the standard `BotsEnabled`, `BotQuota`, and `BotQuotaMode` fields. By default Deagle and knife hits are lethal. With Deagle headshots-only enabled, Deagle body hits do no damage while knife hits remain lethal. Universal exposes both rule options; `!fun` and rotations use the config defaults. Chamber owns its native Deathmatch FFA rules independently of the Deathmatch mode: `game_type 1`, `game_mode 2`, and `mp_dm_teammode 0` select individual scoring, with random spawns and Companion-controlled respawns. Chamber clears `bot_stop`, forces the stock bot behavior tree (`mp_bot_ai_bt ""`), and allows bots and humans on either team; these settings are reapplied after map loads and at round prestart. The user has confirmed that bots move in Chamber. Entry and rollback reload the current map. Its guarded five-second map reapply adds no round restart; rollback disables its callbacks, restores captured cvars after map configs load, and only then starts a pending replacement mode. CT/T assignments may remain internally; they do not enable team scoring. Requires `one-in-the-chamber`, `chamber-native-ffa`, and full CSS 1.0.376 runtime. Roll back an active older Chamber session before upgrading. Native HUD/scoring and other broader gameplay/map-transition cases still require live testing.
+Start **Super Hero** in `!fun`, through Universal, or with `css_rct_fun_apply superhero`. Normal weapons and buying remain available.
 
-**Bot team** in Universal's **Bot Control** option or `!fun` > Bot control places every bot on one side: **Any** (default), **CT** (humans play T), or **T** (humans play CT). Choosing CT or T moves humans off the bot side, kicks and re-adds bots, and restarts the round. Returning to **Any** restores the original `bot_join_team`, `mp_humanteam`, `mp_autoteambalance`, and `mp_limitteams` values and restarts without kicking bots. Original team values and the active team are saved by Companion so they remain restorable after a plugin reload. The setting combines with any mode (for example ScoutzKnives with 20 bots against one player), is re-applied after map changes, and stays active until set back to Any. Deathmatch ignores team assignment.
+Each spawn receives **one enabled power**, not all fourteen at once. Powers are allocated from the least-used choices among living teammates, independently for CT and T. A five-player team gets five different powers when at least five are enabled; larger teams receive balanced repeats. Respawns prefer a different power when an equally suitable choice exists. Humans and bots have individual assignments.
 
-All bot quota modes default to `fill`, including standalone Bot Control. An explicitly saved `normal` or `match` selection remains unchanged.
+All fourteen toggles default to `true`. Configure them inside the `SuperHero` section of `RCT.json`; defaults below apply to new or missing fields, not values already saved in your file.
 
-Super Hero assigns from the least-used enabled powers among living teammates, independently for each team. With at least five powers enabled, a five-player team gets five different powers; repeats are balanced when the team outnumbers the enabled powers. Respawning players receive a different power when another equally suitable choice exists. Humans and bots have individual assignments.
+| Power | JSON toggle | What it does / player control | Strength settings and defaults |
+| --- | --- | --- | --- |
+| Speedster | `Speedster` | Faster movement. | `SpeedMultiplier`: `1.6` |
+| Moon Jumper | `LowGravity` | Hold Jump during takeoff for a high jump and slower descent. Fall damage is cancelled for this power. | `MoonJumperJumpVelocity`: `1200` units/s; `LowGravityScale`: `0.275` |
+| Tank | `Tank` | Increased health and full armor. | `TankHealth`: `250` |
+| Ghost | `Ghost` | Nearly invisible appearance. | `GhostVisibilityPercent`: `15` |
+| Vampire | `Vampire` | Heals a percentage of damage dealt to other players. | `VampirePercent`: `50` |
+| Regenerator | `Regenerator` | Heals after each enemy kill. | `KillHealAmount`: `50` |
+| Juggernaut | `Juggernaut` | Reduced incoming damage at the cost of movement speed. | `JuggernautDamageReductionPercent`: `35`; `JuggernautSpeedMultiplier`: `0.75` |
+| Second Wind | `SecondWind` | Survives one lethal incoming hit per life, restoring survival health. | `SecondWindHealth`: `35` |
+| Ammo Recycler | `AmmoRecycler` | Enemy kills refill the active magazine. | No numeric setting. |
+| Berserker | `Berserker` | Increased enemy damage and movement speed while below the health threshold. | `BerserkerHealthThreshold`: `35`; `BerserkerDamageMultiplier`: `1.5`; `BerserkerSpeedMultiplier`: `1.3` |
+| Medic | `Medic` | Periodically heals nearby living teammates with line of sight, up to 100 health. | `MedicHealAmount`: `5`; `MedicRadius`: `300` units; `MedicIntervalSeconds`: `2` |
+| Blink | `Blink` | Press Use (normally E) to attempt a forward teleport. Blocked paths, occupied destinations, and unsupported drops are rejected. | `BlinkDistance`: `250` units; `BlinkCooldownSeconds`: `8` |
+| Double Jump | `DoubleJump` | Release Jump, then press it again while airborne for one extra jump. Landing resets it. | `DoubleJumpVelocity`: `250` units/s |
+| Gunslinger | `Gunslinger` | Completes reloads sooner, transferring existing reserve ammo rather than creating ammo. | `GunslingerReloadMultiplier`: `0.5` of normal remaining reload time |
 
-Moon Jumper combines reduced gravity with a high launch velocity applied on the first airborne tick, within a one-second pending jump window. Hold Jump as you take off to queue the boost. `MoonJumperJumpVelocity` sets the upward velocity (default `1200` units/s; range `300`-`1500`); `LowGravityScale` multiplies gravity (default `0.275`, range `0.1`-`1`, where `1` is normal). The default approximates ScoutzKnives' `sv_gravity 220` on a standard 800-gravity server. Universal exposes both settings; the assignment message reports both. Enable only Moon Jumper when testing because each spawn otherwise receives a random enabled power. Existing `RCT.json` values are preserved on upgrade; adjust `LowGravityScale` and `MoonJumperJumpVelocity` there if `!fun` should use the new defaults.
+### Shared settings and input details
 
-### Map Changes
+- `MaxHealth` defaults to `200` and controls Vampire/Regenerator healing caps; the cap is at least the pawn's maximum health.
+- Moon Jumper's launch velocity accepts `300`-`1500` units/s. Gravity accepts `0.1`-`1`, where `1` is normal. The `0.275` default approximates ScoutzKnives' gravity of 220 on a standard 800-gravity server.
+- To test a particular power, enable only that power; otherwise assignment selects among the enabled choices.
+- Bots trigger Blink when an enemy is ahead and use Double Jump automatically while descending.
+- The Fun Stuff menu suppresses power-input handling, so selecting with E does not activate Blink.
+- Pending Gunslinger reload completion is cancelled when the weapon, life, power, or map changes.
+- Rollback removes active powers. Map recovery resets power/life/cooldown state before assigning powers again.
 
-Universal's **Fun Stuff > Empty-server rollback (server-wide)** panel can read and save `RollbackWhenServerEmpty` and `EmptyServerRollbackDelaySeconds` without starting or replacing a mode. It displays the grace period in minutes (default `5`, range `0`-`60`); Companion stores seconds in `RCT.json`. The app loads the selected server's values before allowing **Apply settings**. `css_rct_empty_server_config <on|off> <seconds>` validates and saves the policy before changing runtime behavior; save failure leaves the old policy intact. Disabling automatic rollback cancels a pending grace timer; editing the delay preserves its original departure time. Requires the `empty-server-settings` capability. This server-wide policy also governs `!fun` and scheduled rotations. Focused contract/timing checks passed; live UI/RCON persistence testing is pending.
+### Power notices
 
-Active modes are intended to carry over between maps. `!fun` and scheduled-rotation modes now replay their saved active commands after map configs load and reassert managed loadouts without recapturing rollback values or sending another round restart. Deathmatch and No Bots retain their existing dedicated reapply timing; One in the Chamber retains its own guarded map handler. Super Hero clears map-specific power/life/cooldown state and reassigns powers to living players about five seconds after map start, for either control interface. Stale callbacks cannot revive a replaced or rolled-back mode. Builds and focused callback checks passed; live map-transition testing is still pending.
+`PowerNoticeSeconds` defaults to `5`, accepts `0`-`30`, and disables center-screen popups at `0`. Universal labels this **Power popup (seconds)**.
 
-Universal-owned modes use the app's map watcher for cvar reapplication, so the app must remain open for that part. `RollbackWhenServerEmpty` still intentionally disables a mode when the last human leaves; map recovery does not override that rollback. Check `css_rct_status` for the active profile/owner and the log for an empty-server rollback if a mode disappears. The updated build reports `mode-map-reapply` in its capabilities.
+The notice shows the assigned power and the same description as chat, including activation instructions. Spectators see the living player or bot they are watching, with the subject's name and a bot label. A target, power, or life change starts a fresh notice.
 
-The `map-transition-guard` prevents rollback while a known transition is tearing down player entities. With `empty-server-grace`, last-human departure instead begins the default five-minute grace period; map loading and roster checks do not shorten or repeatedly restart it. The five-second map-initialization callback can recheck the roster but cannot bypass the grace deadline. A genuinely empty server eventually rolls back after that deadline; explicit Rollback remains immediate. Status includes **Map transition**, **Last mode end**, and **Empty-server grace**; logs record the reason and transition state. The reported live loss of Super Hero still requires a server retest.
+Notices do not freeze movement or accept menu input. `!fun` takes priority and pauses an existing notice's clock; expiration, mode exit, and map reset clear it. Chat remains a fallback. RCT refreshes cached notice HTML each server tick to maintain its display; exact live duration and residual HUD dimming remain validation items.
+
+## One in the Chamber
+
+Start with `css_rct_fun_apply oneinthechamber`, `!fun`, or Universal.
+
+- Each spawn grants the stock Desert Eagle, team knife, one bullet, and no reserve ammo.
+- Each non-self player kill earns one bullet, including knife kills and kills on the same nominal team. Earned bullets can accumulate up to 64.
+- Missing the shot leaves the knife as the way to earn another bullet.
+- Buying, other weapons, map-placed weapons, and C4 objectives are disabled. A per-life ammo ledger prevents reloads, pickups, or bot takeovers from creating extra bullets.
+
+| `OneInTheChamber` setting | Default | Meaning |
+| --- | --- | --- |
+| `HeadshotsOnly` | `false` | By default, Deagle and knife hits are lethal. When enabled, Deagle body hits do no damage; knife hits remain lethal. |
+| `RespawnDelaySeconds` | `1` | Companion-controlled respawn delay, from `0.25` to `10` seconds. |
+
+Standard bot settings also apply. Chamber owns its native Deathmatch FFA rules independently of the Deathmatch mode: `game_type 1`, `game_mode 2`, and `mp_dm_teammode 0`, with individual scoring and random spawns. Internal CT/T assignments do not enable team scoring.
+
+Chamber clears `bot_stop`, uses the stock bot behavior tree (`mp_bot_ai_bt ""`), and allows humans and bots on either team. Entry and rollback reload the current map. Its guarded five-second map reapply adds no round restart; rollback restores captured cvars after map configs load before starting a pending replacement mode.
+
+Roll back an active older Chamber session before upgrading. This mode requires `one-in-the-chamber` and `chamber-native-ffa` capabilities and the full compatible CounterStrikeSharp runtime.
+
+## Bot settings
+
+Every configurable gameplay mode has these independent bot options:
+
+| Setting | Default | Behavior |
+| --- | --- | --- |
+| `BotsEnabled` | `true` | When disabled, sets quota to zero and kicks current bots; quota and quota mode are ignored. |
+| `BotQuota` | `null` | Preserves the current server quota. Set `1`-`64` to enforce a count. |
+| `BotQuotaMode` | `fill` | Accepts `normal`, `fill`, or `match`. `fill` replaces bots as humans join to maintain the configured total quota. |
+
+All quota modes, including standalone Bot Control, default to `fill`. Existing explicit `normal` or `match` selections are preserved. In a mode's `!fun` submenu, administrators can select the current quota or presets from 1 to 20.
+
+### Standalone Bot Control
+
+Changes in **Bot control** are staged until **Apply now**. Apply saves preferences to `RCT.json` before changing the live server; a save failure leaves the server unchanged. Enabling bots with a zero current quota starts at 10 unless another quota is selected.
+
+| Bot team | Result |
+| --- | --- |
+| Any | Default; restores original team cvars when leaving a forced side. |
+| CT | Bots play CT; humans play T. |
+| T | Bots play T; humans play CT. |
+
+Selecting CT or T moves humans off the bot side, kicks and re-adds bots, and restarts the round. Returning to Any restores `bot_join_team`, `mp_humanteam`, `mp_autoteambalance`, and `mp_limitteams`, then restarts without kicking bots.
+
+Team selection survives map changes and remains active until returned to Any. RCT saves the active side and original values so they remain restorable after plugin reload. It can combine with gameplay modes, such as ScoutzKnives against 20 bots; Deathmatch ignores team assignment.
+
+## Configuration and upgrades
+
+On first load, CounterStrikeSharp generates:
+
+```text
+game/csgo/addons/counterstrikesharp/configs/plugins/RCT/RCT.json
+```
+
+Each mode has its own section. `!fun` and scheduled rotations use these defaults; Universal can supply its exposed settings. To edit manually, unload RCT, edit valid JSON, then load RCT or restart the server. Numeric settings are clamped to their supported ranges.
+
+ScoutzKnives includes air acceleration, gravity, bunnyhopping, automatic bunnyhopping, fall-damage scale, and friction. Surf includes cheats, acceleration, air acceleration, gravity, both bunnyhop switches, jump/landing stamina costs, round time, and freeze time. Grenade Wars, fire-grenade modes, and Zeus Wars always enforce their required loadouts and do not expose a `ManagedLoadout` option.
 
 ### Upgrading an existing `RCT.json`
 
-CounterStrikeSharp only generates `RCT.json` when it does not exist, so upgrading Companion does not add new options to an existing file. You do not need to regenerate it: any option missing from the file uses its documented default. To see or change a new option, either:
+An upgrade does not automatically insert new options into an existing file. **Missing fields use their defaults**; saved values remain in effect.
 
-- **Add it manually** (keeps your settings): unload RCT, add the option to `RCT.json`, then load or restart RCT. For 1.0.2, add `"RollbackWhenServerEmpty": true` at the top level, next to the mode sections.
-- **Regenerate the file** (resets everything to defaults): unload RCT, delete or rename `RCT.json`, then load or restart RCT so CounterStrikeSharp writes a new file with every option. Re-apply any customized values afterwards.
+- **Keep your settings:** unload RCT and add the desired fields manually.
+- **Regenerate all defaults:** unload RCT, back up and rename `RCT.json`, then load RCT. Reapply custom values to the new file.
+- **Save from `!fun`:** a mode-submenu bot edit saves the complete current configuration, adding missing fields with their current values. Bot Control does the same when **Apply now** is selected.
 
-Changing a bot setting from an in-game `!fun` mode submenu also saves the complete current configuration back to `RCT.json`, which adds any missing options with their current values. The standalone Bot Control panel adds a top-level `BotControl` section when **Apply now** saves and applies the settings.
+Version 1.0.2 adds the `SuperHero`, `OneInTheChamber`, and `BotControl` sections, plus the top-level `RollbackWhenServerEmpty` and `EmptyServerRollbackDelaySeconds` settings. All Super Hero fields are listed above.
 
-| Version | New `RCT.json` options |
+Companion maintains `rollback-state.json` beside `RCT.json`. Do not edit it: it holds the active mode's pre-change cvars and shared rollback metadata, not credentials. Bot-team restore metadata is also maintained automatically.
+
+## Rollback and map changes
+
+### Switching and ending modes
+
+Universal and `!fun` share a pre-mode snapshot. Replacement restores the outgoing snapshot before capturing a fresh one for the next mode. Changed bot, physics, and other tracked cvars return to their captured values.
+
+A server-side operation lock prevents overlapping supported-interface changes, including changes across Deathmatch map reloads. The lock expires after two minutes as a recovery safeguard. A named profile-disable command only succeeds while that profile owns the active state, preventing stale cleanup from affecting its replacement.
+
+No Bots is independent: it reasserts quota zero after maps and restores its captured quota without restarting the round.
+
+### Map carryover
+
+- Modes started by `!fun` or scheduled rotation replay saved active commands after map configs load, without recapturing rollback values or adding another round restart.
+- Deathmatch, No Bots, and One in the Chamber retain their own dedicated reapply handlers.
+- Super Hero resets map-specific state and reassigns powers to living players about five seconds after map start.
+- Universal-owned modes use the app's map watcher for cvar reapplication, so **keep Universal open** for that part.
+
+Stale callbacks cannot revive a replaced or rolled-back mode. Transition guards prevent teardown of player entities from being mistaken for an immediate empty-server rollback.
+
+### Empty-server policy
+
+| Top-level setting | Default | Behavior |
+| --- | --- | --- |
+| `RollbackWhenServerEmpty` | `true` | Automatically ends the active mode after sustained absence of humans. |
+| `EmptyServerRollbackDelaySeconds` | `300` | Five-minute grace period; range `0`-`3600`. `0` removes the grace period. |
+
+Bots and SourceTV do not count as humans. Returning or connecting humans cancel pending rollback. Map changes and repeated checks do not extend the original deadline; expiry rechecks the roster and transition state.
+
+Explicit Rollback is immediate. Replacement and plugin unload cancel pending timers. Disabling the policy keeps modes active indefinitely on an empty server. Editing a pending delay retains the original departure time.
+
+Use `css_rct_empty_server_config <on|off> <seconds>` to save the policy. Save failure leaves the old policy intact. Universal's **Empty-server rollback (server-wide)** panel reads and edits the same policy in minutes (`0`-`60`) without starting a mode.
+
+`css_rct_status` reports the active profile/owner, **Map transition**, **Last mode end**, and **Empty-server grace**. Check these when diagnosing a mode that ended unexpectedly.
+
+## Command reference
+
+Except for the permission-protected in-game menu, administrative commands are restricted to the server console or RCON.
+
+### Modes and configuration
+
+| Command | Purpose |
 | --- | --- |
-| 1.0.2 | `RollbackWhenServerEmpty` (top level, default `true`); `EmptyServerRollbackDelaySeconds` (top level, default `300`, range `0`-`3600`); `SuperHero` mode section, including eight additional enabled-by-default toggles, strength keys, and `PowerNoticeSeconds` (default `5`, `0` disables, max `30`); `BotControl` (top-level saved preferences; active bot-team restore state is maintained automatically); `OneInTheChamber` mode section (`HeadshotsOnly`, `RespawnDelaySeconds`, standard bot settings; `BotQuotaMode` defaults to `fill`) |
+| `css_rct_status` | Report version, active state, grace/transition diagnostics, and capabilities. |
+| `css_rct_version` | Report the plugin version. |
+| `css_fun` / `!fun` / `/fun` | Open the built-in menu; requires `@css/fun`. |
+| `css_rct_fun_apply <mode>` | Start a complete mode using `RCT.json`, rolling back the current mode first. |
+| `css_rct_mode_enable <mode>` | Activate an isolated profile; lower-level integration command. |
+| `css_rct_mode_disable <mode>` | Disable the named profile only when it is active. |
+| `css_rct_mode_rollback` | Roll back the active mode regardless of its control interface. |
+| `css_rct_superhero_config` | Set the original six power toggles and strengths for the server session (13 arguments). |
+| `css_rct_superhero_extra_config` | Set the eight additional toggles and strengths for the server session (21 arguments; sent by Universal). |
+| `css_rct_superhero_moon_config <velocity>` | Set runtime Moon Jumper launch velocity (`300`-`1500`). |
+| `css_rct_superhero_notice <seconds>` | Set runtime popup duration (`0`-`30`; `0` disables). |
+| `css_rct_empty_server_config <on\|off> <seconds>` | Persist the server-wide empty-server policy (`0`-`3600` seconds). |
+| `css_rct_chamber_enable <on\|off> <respawn-seconds>` | Enable Chamber rules after its profile; the toggle controls Deagle-headshots-only. |
 
-Companion automatically maintains `rollback-state.json` in the same `configs/plugins/RCT` directory. Do not edit this runtime file. It stores the active mode's pre-change ConVar commands so either Universal or `!fun` can roll back a mode applied by the other interface; it contains no credentials.
+### Player commands
 
-## Commands
-
-| Command | Description |
+| Command | Purpose |
 | --- | --- |
-| `css_rct_status` | Report version, Zeus state, and capabilities |
-| `css_rct_version` | Report the plugin version |
-| `css_fun` / `!fun` | Open the Fun Stuff menu; requires `@css/fun` |
-| `css_rct_mode_enable <mode>` | Activate one isolated Fun Stuff mode profile |
-| `css_rct_mode_disable <mode>` | Disable the named profile only when it is active |
-| `css_rct_mode_rollback` | Roll back the active Fun Stuff mode regardless of which interface applied it |
-| `css_rct_fun_apply <mode>` | Start a Fun Stuff mode with its `RCT.json` settings, rolling back the current mode first (used by Universal's scheduled Fun Stuff rotation) |
-| `css_rct_superhero_config` | Set the original six powers and strengths for this server session (13 arguments) |
-| `css_rct_superhero_extra_config` | Set the eight additional powers and strengths for this server session (21 arguments; sent by Universal) |
-| `css_rct_superhero_notice <seconds>` | Set the runtime power-popup duration, from 0 to 30 seconds (`0` disables) |
-| `css_rct_empty_server_config <on\|off> <seconds>` | Save server-wide empty-server rollback policy to `RCT.json`; grace range is 0-3600 seconds |
-| `css_rct_chamber_enable <on\|off> <respawn-seconds>` | Activate One in the Chamber rules after its mode profile; on/off controls Deagle-headshots-only |
-| `css_rct_give <target> <weapon>` | Give a weapon or item to alive targets |
-| `css_rct_strip <target>` | Remove all weapons from targets |
-| `css_rct_respawn <target>` | Respawn targets |
-| `css_rct_health <target> <amount>` | Set health from 1 to 100000 |
-| `css_rct_speed <target> <multiplier>` | Set movement speed from 0.1 to 10 |
-| `css_rct_gravity <target> <scale>` | Set gravity from 0 to 10 |
-| `css_rct_freeze <target>` | Freeze targets |
-| `css_rct_unfreeze <target>` | Return targets to normal walking movement |
-| `css_rct_money <target> <amount>` | Set money from 0 to 65535 |
-| `css_rct_god <target> <on\|off>` | Enable or disable damage immunity |
-| `css_rct_noclip <target> <on\|off>` | Enable or disable noclip |
-| `css_rct_reset <target>` | Reset speed, gravity, movement, and damage state |
-| `css_rct_zeus_enable` | Enable managed Zeus loadouts now and on spawn |
-| `css_rct_knife_enable` | Enable managed knife-only loadouts now and on spawn |
-| `css_rct_knife_disable` | Disable the managed knife-only loadout when active |
-| `css_rct_pistols_enable` | Enable managed team-pistol-only loadouts now and on spawn |
-| `css_rct_pistols_disable` | Disable the managed pistol loadout when active |
-| `css_rct_scoutzknives_enable` | Enable managed SSG 08 and team-knife loadouts now and on spawn |
-| `css_rct_scoutzknives_disable` | Disable the managed ScoutzKnives loadout when active |
-| `css_rct_awp_loadout_enable` | Enable managed AWP-only loadouts now and on spawn |
-| `css_rct_awp_loadout_disable` | Disable the managed AWP loadout when active |
-| `css_rct_grenades_enable` | Enable managed HE-grenade-only loadouts now and on spawn |
-| `css_rct_grenades_disable` | Disable the managed HE-grenade loadout when active |
-| `css_rct_fire_grenades_enable` | Enable managed Molotov/incendiary-only loadouts now and on spawn |
-| `css_rct_fire_grenades_disable` | Disable the managed fire-grenade loadout when active |
-| `css_rct_loadout_disable` | Disable the active managed weapon loadout |
-| `css_rct_zeus_disable` | Disable the managed Zeus loadout when active |
-| `css_rct_buy_disable` | Close buy menus, remove buy-zone access, and block purchases |
-| `css_rct_buy_enable` | Restore normal buy-zone and purchase behavior |
-| `css_rct_deathmatch_enable` | Give a medikit (`weapon_healthshot`) every 3 consecutive kills; resets streaks |
-| `css_rct_deathmatch_disable` | Disable Deathmatch kill-streak medikit rewards; resets streaks |
-| `css_rct_ground_clear_enable` | Delete map-placed and dropped weapons left on the ground, every round (preserves the C4) |
-| `css_rct_ground_clear_disable` | Stop removing ground weapons; map-placed weapons return next round |
+| `css_rct_give <target> <weapon>` | Give an item to alive targets. |
+| `css_rct_strip <target>` | Remove all weapons. |
+| `css_rct_respawn <target>` | Respawn targets. |
+| `css_rct_health <target> <amount>` | Set health (`1`-`100000`). |
+| `css_rct_speed <target> <multiplier>` | Set movement speed (`0.1`-`10`). |
+| `css_rct_gravity <target> <scale>` | Set gravity (`0`-`10`). |
+| `css_rct_freeze <target>` / `css_rct_unfreeze <target>` | Freeze targets or restore walking movement. |
+| `css_rct_money <target> <amount>` | Set money (`0`-`65535`). |
+| `css_rct_god <target> <on\|off>` | Toggle damage immunity. |
+| `css_rct_noclip <target> <on\|off>` | Toggle noclip. |
+| `css_rct_reset <target>` | Reset managed speed, gravity, movement, and damage state. |
 
-Weapon names may be supplied with or without the `weapon_` prefix. For example, `taser` and `weapon_taser` are equivalent.
+Weapon names accept the `weapon_` prefix or its omission: `taser` and `weapon_taser` are equivalent.
 
-## In-Game Fun Menu
+### Low-level loadout and rule commands
 
-Grant trusted administrators the custom CounterStrikeSharp permission `@css/fun`. Those administrators can type `!fun` or `/fun` in chat and select any Fun Stuff mode or **Rollback** without knowing or storing the RCON password. The menu is Companion's built-in WASD menu. Chat-selected modes use the isolated Companion profiles and defaults from `RCT.json`. Companion captures the live server ConVar values before either interface applies a selection and owns the shared rollback snapshot.
+These are integration building blocks, not complete mode starts.
 
-Universal and `!fun` can roll back or replace modes applied by either interface. Every replacement first restores the shared pre-mode snapshot, then captures a fresh snapshot before applying the new mode. A server-side operation lock prevents another supported interface from applying or rolling back a mode while a change is in progress, including across Deathmatch map reloads. The lock expires after two minutes as a recovery safeguard if a client disconnects mid-operation.
+| Commands | Purpose |
+| --- | --- |
+| `css_rct_zeus_enable` / `css_rct_zeus_disable` | Managed Zeus loadouts. |
+| `css_rct_knife_enable` / `css_rct_knife_disable` | Managed team-knife loadouts. |
+| `css_rct_pistols_enable` / `css_rct_pistols_disable` | Managed team-default pistol loadouts. |
+| `css_rct_scoutzknives_enable` / `css_rct_scoutzknives_disable` | Managed SSG 08 and team-knife loadouts. |
+| `css_rct_awp_loadout_enable` / `css_rct_awp_loadout_disable` | Managed AWP-only loadouts. |
+| `css_rct_grenades_enable` / `css_rct_grenades_disable` | Managed HE-grenade loadouts. |
+| `css_rct_fire_grenades_enable` / `css_rct_fire_grenades_disable` | Managed Molotov/incendiary loadouts. |
+| `css_rct_loadout_disable` | Disable the active managed loadout. |
+| `css_rct_buy_disable` / `css_rct_buy_enable` | Disable buying or restore normal buy-zone/purchase behavior. |
+| `css_rct_deathmatch_enable` / `css_rct_deathmatch_disable` | Toggle a healthshot reward every three consecutive kills; reset streaks. |
+| `css_rct_ground_clear_enable` / `css_rct_ground_clear_disable` | Toggle per-round removal of map-placed/dropped weapons, preserving C4. Map weapons return next round when disabled. |
 
-## Targets
+## Player targets and examples
 
 | Target | Matches |
 | --- | --- |
-| `@all` | All connected players and bots |
-| `@ct` | Counter-Terrorists |
-| `@t` | Terrorists |
+| `@all` | All connected humans and bots |
+| `@ct` / `@t` | Counter-Terrorists / Terrorists |
 | `@spec` | Spectators |
-| `@alive` | Alive players |
-| `@dead` | Dead players |
-| `@bot` | Bots |
-| `@human` | Human players |
+| `@alive` / `@dead` | Alive / dead players |
+| `@bot` / `@human` | Bots / humans |
 | `#<userid>` | One server user ID, such as `#12` |
 | `<SteamID64>` | One Steam account |
-| `<exact name>` | One or more exact case-insensitive name matches |
+| `<exact name>` | One or more exact, case-insensitive name matches |
 
-Quote player names containing spaces in an RCON command.
-
-## Examples
+Quote names containing spaces:
 
 ```text
 css_rct_give @all taser
@@ -188,15 +329,37 @@ css_rct_health @ct 250
 css_rct_speed "Player Name" 1.5
 css_rct_gravity #12 0.5
 css_rct_god @human on
-css_rct_zeus_enable
-css_rct_status
-css_rct_zeus_disable
+css_rct_reset @human
 ```
 
-## Managed State
+## Managed player state
 
-Speed, gravity, freeze, god mode, and noclip settings are tracked by SteamID and reapplied after spawn. `css_rct_reset` restores their normal values. Unloading the plugin also restores managed movement and damage values. Universal activates a named Companion profile for every Fun Stuff mode. A profile-disable command only succeeds when that profile still owns the active state, preventing delayed or persisted cleanup from one mode from changing another mode. ScoutzKnives, Pistols Only, Knife Arena, AWP Wars, Grenade Wars, Molotov/Incendiary Wars, and Zeus Wars use managed inventories. Headshot Only, Bhop, Deathmatch, and Surf use explicit profiles with unrestricted weapons. No Bots (`css_rct_mode_enable nobots`, first entry in `!fun`) only sets `bot_quota 0` and kicks bots; it leaves loadouts, buying, and ground cleanup untouched, re-asserts itself after map loads, and its rollback restores the captured bot quota without restarting the round.
+Speed, gravity, freeze, god mode, and noclip are tracked by SteamID and reapplied after spawn. `css_rct_reset` restores normal values; unloading restores managed movement and damage values.
 
-Managed modes replace each alive human or bot inventory immediately, after future spawns, and when a human takes control of a bot, while preserving the Terrorist bomb carrier's C4. The plugin strips the old loadout through CounterStrikeSharp's supported inventory API and then grants the mode-owned items. ScoutzKnives grants one SSG 08 and the player's team knife; AWP Wars grants only an AWP. Zeus grants only a Zeus, Knife Arena grants only the team knife, and Pistols Only grants only the team's default pistol. Grenade Wars grants an HE grenade, while Molotov/Incendiary Wars grants a Molotov to Terrorists or an incendiary grenade to Counter-Terrorists. Human players retain the team knife as CS2's required post-throw fallback weapon; after a throw, the plugin restores grenade ammo and selects dedicated slot 6 for HE or slot 10 for Molotov/incendiary. Bots receive no knife in grenade modes, so their AI cannot prefer melee combat. During a bot takeover, weapon and ammo operations continue through the live bot controller while slot-selection commands are sent through the human controller. While buying is disabled, every game tick removes buy-zone access without cancelling normal weapon selection or C4 planting. Disabling managed loadouts does not strip players again; normal game loadouts return through the game mode's usual spawn or round behavior.
+Managed inventories are applied to living humans and bots immediately, after later spawns, and on human bot takeover. RCT uses CounterStrikeSharp's inventory API and preserves the Terrorist bomb carrier's C4 where the mode allows it. Disabling a managed loadout does not strip players again; normal inventories return through usual game spawn/round behavior.
 
-The plugin does not read, execute, or modify `server.cfg` or any other server configuration file.
+In grenade modes, humans retain a team knife as CS2's post-throw fallback. RCT restores grenade ammo and selects HE slot 6 or fire-grenade slot 10 after throws. Bots receive no knife so their AI cannot prefer melee. On takeover, inventory operations use the live bot controller and slot-selection commands use the human controller.
+
+While buying is disabled, RCT removes buy-zone access each tick without cancelling normal weapon selection or C4 planting. Chamber's separate rules disable C4 objectives.
+
+RCT does not read, execute, or modify `server.cfg` or other server configuration scripts.
+
+## Troubleshooting and validation
+
+| Symptom | Check |
+| --- | --- |
+| RCT appears as `Unknown (Unknown)` | Install the complete compatible CounterStrikeSharp runtime and current RCT release, remove the older DLL, then restart instead of hot-reloading across the framework change. |
+| `!fun` is unavailable | Confirm RCT loaded and the administrator has `@css/fun`. No external menu plugin is needed. |
+| A new option is missing from JSON | Existing files are not regenerated on upgrade; follow the configuration upgrade steps above. |
+| Settings Apply cannot save | Check write access to `configs/plugins/RCT/RCT.json` and the reported error path. Restore ordinary permissions after testing. |
+| Super Hero assigns a different power | Disable other powers when testing one; assignments are balanced across enabled powers, not selected manually per player. |
+| A mode ends after everyone leaves | Check the empty-server policy, grace timer, and last mode-end reason with `css_rct_status`. |
+| Universal-owned cvars do not carry over | Keep the desktop app open for its map watcher; inspect active profile/owner and transition diagnostics. |
+
+Earlier builds saved through a framework helper that derived `RconToolCompanion/RconToolCompanion.json` from the assembly name. Current bot, bot-team, and empty-server saves explicitly use `RCT/RCT.json`; changing permissions on that file could not fix the earlier wrong-path issue. RCT does not migrate or overwrite the long-name configuration.
+
+Useful capability tags include `superhero-expanded`, `superhero-notice`, `nobots`, `one-in-the-chamber`, `chamber-native-ffa`, `mode-map-reapply`, `map-transition-guard`, `empty-server-grace`, and `empty-server-settings`. Universal uses capabilities to reject unsupported older builds.
+
+Release builds and focused regression checks cover power allocation, damage/jump predicates, ammo accounting, map/rollback guards, grace deadlines, popup timing/identity, and configuration persistence. Hosted live tests have confirmed settings saving, Super Hero map-rotation carryover, readable spectator notices, and moving Chamber bots.
+
+These checks do **not** establish full gameplay validation. Remaining live checks include broader Super Hero power behavior and reload animations, Chamber HUD/scoring and transitions, actual empty-server expiry/reconnect scenarios, exact popup duration, and residual HUD dimming. No claim of flicker-free rendering is made.
