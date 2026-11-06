@@ -1,12 +1,12 @@
 # RCON Tool Companion
 
-**Development version:** 1.0.3 | **Author:** ShAgGy
+**Version:** 1.0.3 | **Author:** ShAgGy
 
 RCON Tool Companion (RCT) is a standalone CounterStrikeSharp plugin for CS2 Fun Stuff modes and player-level commands. It includes its own in-game administration menu and does not depend on SimpleAdmin or a separate menu plugin.
 
 The [Ultimate CS2 RCON/Server Tool](https://github.com/ShAgGy2035/Ultimate-RCON-Server-Tool) is optional. Use RCT alone with `!fun`, or use the desktop tool for mode settings, scheduled rotations, RCON commands, and server management.
 
-See the [1.0.3 release notes](Release%20Notes-1.0.3.md) for the upcoming changes. This version is not yet published; [GitHub Releases](https://github.com/ShAgGy2035/RconCompanionTool/releases) lists available downloads.
+See the [1.0.3 release notes and downloads](https://github.com/ShAgGy2035/RconCompanionTool/releases/tag/v1.0.3) for the current release.
 
 ## Contents
 
@@ -27,7 +27,6 @@ See the [1.0.3 release notes](Release%20Notes-1.0.3.md) for the upcoming changes
 - [Command reference](#command-reference)
 - [Player targets and examples](#player-targets-and-examples)
 - [Managed player state](#managed-player-state)
-- [Building a local package](#building-a-local-package)
 - [Troubleshooting and validation](#troubleshooting-and-validation)
 
 ## Requirements
@@ -40,7 +39,7 @@ RCT targets .NET 10 and CounterStrikeSharp API 1.0.376. MenuManagerAPI, MenuMana
 
 ## Install and verify
 
-1. Back up the existing plugin and `configs/plugins/RCT` directory before upgrading. When version 1.0.3 is published, extract `RconToolCompanion-v1.0.3.zip` into the server's `game/csgo/` directory. The archive starts at `addons/`.
+1. Back up the existing plugin and `configs/plugins/RCT` directory before upgrading. Download and extract `RconToolCompanion-v1.0.3.zip` into the server's `game/csgo/` directory. The archive starts at `addons/`.
 2. Confirm the deployed plugin is at:
 
    ```text
