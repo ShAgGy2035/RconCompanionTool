@@ -488,12 +488,6 @@ While buying is disabled, RCT removes buy-zone access each tick without cancelli
 
 RCT does not read, execute, or modify `server.cfg` or other server configuration scripts.
 
-## Building a local package
-
-Run `.\package-release.ps1` from PowerShell. It builds the plugin and creates `artifacts\RconToolCompanion-v<version>.zip` with a matching `.zip.sha256` sidecar, calculated after the archive is closed. Add `-Verbose` for checksum-generation diagnostics. Rebuild whenever the DLL changes; never reuse an old checksum with a new archive.
-
-This is local packaging only, not publication or deployment. When release publication is explicitly approved, include the matching checksum file and verify GitHub's release-asset SHA-256 digest against the final ZIP. Universal uses that API digest for automatic verification, not sidecar discovery; absent metadata still requires manual integrity approval.
-
 ## Troubleshooting and validation
 
 Run `css_rct_version` and `css_rct_status` from the server console or RCON first to confirm the loaded build and active settings.
@@ -510,15 +504,3 @@ Run `css_rct_version` and `css_rct_status` from the server console or RCON first
 | Administrator access disappears after a map change | Run `css_rct_admin_status` while the affected player is connected. It distinguishes pending Steam authorization from missing administrator permission without printing account IDs. Reloading the admin file does not authorize a player. |
 | Changed defaults do not affect a running mode | Roll back and start again; active settings are preserved through plugin reloads. |
 | Category voting is missing | Use category rotation, enable CategoryVoting, and select weapons in at least two categories. Very short intervals can skip voting. Use `!wrvote` to reopen an active ballot. |
-
-### Debug tracking
-
-RCT debugging is independent of Universal's setting and defaults off. From the server console or RCON, run `css_rct_debug 1` to enable it or `css_rct_debug 0` to disable it. The choice is saved as `DebugMode` in `RCT.json`; `css_rct_status` reports it.
-
-Look for `[RCT DEBUG]` entries in the CounterStrikeSharp log. Diagnostics cover menu actions, mode changes, weapon assignments, votes, and notices without raw command arguments, player names, or Steam IDs. Review logs before sharing, since other plugins or ordinary server output can still contain sensitive details.
-
-Earlier builds saved through a framework helper that derived `RconToolCompanion/RconToolCompanion.json` from the assembly name. Current bot, bot-team, and empty-server saves explicitly use `RCT/RCT.json`; changing permissions on that file could not fix the earlier wrong-path issue. RCT does not migrate or overwrite the long-name configuration.
-
-Useful capability tags include `superhero-expanded`, `superhero-notice`, `nobots`, `one-in-the-chamber`, `chamber-native-ffa`, `mode-map-reapply`, `map-transition-guard`, `empty-server-grace`, and `empty-server-settings`. Universal uses capabilities to reject unsupported older builds.
-
-Test your selected modes, map changes, rollback, and other installed plugins on a non-production server before deploying an update.
